@@ -133,3 +133,95 @@ class Arrow:
         """触发碰撞反馈"""
         self.shake_time = 30
 
+
+# ===================== 3. 游戏主类 =====================
+class ArrowGame:
+    def __init__(self):
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        pygame.display.set_caption("一箭又一箭 - 箭头解谜游戏")
+        self.clock = pygame.time.Clock()
+        self.font = get_font(36)
+        self.big_font = get_font(72)
+        
+        self.state = STATE_START
+        self.current_level = 0
+        self.max_mistakes = 3    # 每关3次失误机会
+        self.mistakes_left = self.max_mistakes
+        self.arrows = []
+        
+        # 3个可通关关卡（难度递增，均有合理消除顺序）
+        self.levels = [
+            # 第1关：入门级
+            [
+                (0, 4, UP),
+                (2, 3, RIGHT),
+                (2, 1, RIGHT),
+                (4, 2, DOWN),
+                (1, 0, LEFT)
+            ],
+            # 第2关：进阶级
+            [
+                (0, 2, DOWN),
+                (2, 2, DOWN),
+                (4, 2, DOWN),
+                (3, 1, LEFT),
+                (3, 4, LEFT),
+                (1, 0, UP)
+            ],
+            # 第3关：挑战级
+            [
+                (0, 1, DOWN),
+                (2, 1, DOWN),
+                (4, 1, DOWN),
+                (4, 3, UP),
+                (2, 3, UP),
+                (0, 3, UP),
+                (1, 0, RIGHT),
+                (1, 2, RIGHT),
+                (3, 4, LEFT),
+                (3, 2, LEFT)
+            ]
+        ]
+
+        # 游戏内重新开始按钮
+        self.restart_btn = pygame.Rect(WIDTH//2 - 80, HEIGHT - 80, 160, 50)
+        # 失败界面按钮
+        self.lose_restart_btn = pygame.Rect(WIDTH//2 - 110, HEIGHT//2 + 60, 220, 55)
+        self.lose_back_btn = pygame.Rect(WIDTH//2 - 110, HEIGHT//2 + 130, 220, 55)
+
+    def load_level(self, level_index):
+        """加载指定关卡，重置所有状态"""
+        self.arrows = []
+        self.mistakes_left = self.max_mistakes
+        level_data = self.levels[level_index]
+        for row, col, direction in level_data:
+            self.arrows.append(Arrow(row, col, direction))
+
+    def check_path(self, arrow):
+        """核心逻辑：检查箭头前进方向是否有阻挡
+        返回True表示路径畅通，可以飞出
+        """
+        active_arrows = [a for a in self.arrows 
+                         if a.active and not a.flying and a != arrow]
+        
+        if arrow.direction == RIGHT:
+            for a in active_arrows:
+                if a.row == arrow.row and a.col > arrow.col:
+                    return False
+            return True
+        elif arrow.direction == LEFT:
+            for a in active_arrows:
+                if a.row == arrow.row and a.col < arrow.col:
+                    return False
+            return True
+        elif arrow.direction == UP:
+            for a in active_arrows:
+                if a.col == arrow.col and a.row < arrow.row:
+                    return False
+            return True
+        elif arrow.direction == DOWN:
+            for a in active_arrows:
+                if a.col == arrow.col and a.row > arrow.row:
+                    return False
+            return True
+        return False
