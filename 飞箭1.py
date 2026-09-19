@@ -225,3 +225,97 @@ class ArrowGame:
                     return False
             return True
         return False
+
+    def handle_click(self, pos):
+        """处理鼠标左键点击"""
+        if self.state == STATE_START:
+            start_btn = pygame.Rect(WIDTH//2 - 100, HEIGHT//2 + 80, 200, 60)
+            if start_btn.collidepoint(pos):
+                self.state = STATE_PLAYING
+                self.current_level = 0
+                self.load_level(0)
+            return
+
+        if self.state == STATE_WIN:
+            # 通关界面点击返回开始
+            self.state = STATE_START
+            return
+
+        if self.state == STATE_LOSE:
+            # 失败界面：重新开始本关
+            if self.lose_restart_btn.collidepoint(pos):
+                self.load_level(self.current_level)
+                self.state = STATE_PLAYING
+            # 失败界面：返回主菜单
+            elif self.lose_back_btn.collidepoint(pos):
+                self.state = STATE_START
+            return
+
+        if self.state == STATE_PLAYING:
+            # 点击重新开始按钮
+            if self.restart_btn.collidepoint(pos):
+                self.load_level(self.current_level)
+                return
+
+            # 点击箭头
+            for arrow in self.arrows:
+                if arrow.active and not arrow.flying and arrow.get_rect().collidepoint(pos):
+                    if self.check_path(arrow):
+                        arrow.start_fly()
+                    else:
+                        arrow.shake()
+                        self.mistakes_left -= 1
+                        if self.mistakes_left <= 0:
+                            self.state = STATE_LOSE
+                    break
+
+    def check_win(self):
+        """检查本关是否通关，通关则进入下一关"""
+        active_count = len([a for a in self.arrows if a.active])
+        if active_count == 0:
+            if self.current_level < len(self.levels) - 1:
+                self.current_level += 1
+                self.load_level(self.current_level)
+            else:
+                self.state = STATE_WIN
+
+    def update(self):
+        """更新游戏每一帧的状态"""
+        if self.state == STATE_PLAYING:
+            for arrow in self.arrows:
+                arrow.update()
+            self.check_win()
+
+    def draw_grid(self):
+        """绘制棋盘网格线"""
+        for i in range(GRID_SIZE + 1):
+            x = GRID_OFFSET_X + i * CELL_SIZE
+            pygame.draw.line(self.screen, GRAY, 
+                            (x, GRID_OFFSET_Y), 
+                            (x, GRID_OFFSET_Y + GRID_SIZE * CELL_SIZE), 2)
+            y = GRID_OFFSET_Y + i * CELL_SIZE
+            pygame.draw.line(self.screen, GRAY, 
+                            (GRID_OFFSET_X, y), 
+                            (GRID_OFFSET_X + GRID_SIZE * CELL_SIZE, y), 2)
+
+    def draw_ui(self):
+        """绘制游戏界面的UI信息"""
+        title_text = self.big_font.render("一箭又一箭", True, BLACK)
+        self.screen.blit(title_text, (WIDTH//2 - title_text.get_width()//2, 20))
+
+        level_text = self.font.render(f"关卡: {self.current_level + 1}/{len(self.levels)}", True, BLACK)
+        self.screen.blit(level_text, (50, 80))
+
+        arrow_count = len([a for a in self.arrows if a.active])
+        count_text = self.font.render(f"剩余箭头: {arrow_count}", True, BLACK)
+        self.screen.blit(count_text, (50, 120))
+
+        mistake_text = self.font.render(f"剩余失误: {self.mistakes_left}/{self.max_mistakes}", True, RED)
+        self.screen.blit(mistake_text, (WIDTH - 250, 80))
+
+        # 重新开始按钮
+        pygame.draw.rect(self.screen, LIGHT_BLUE, self.restart_btn, border_radius=10)
+        pygame.draw.rect(self.screen, BLACK, self.restart_btn, 2, border_radius=10)
+        btn_text = self.font.render("重新开始", True, BLACK)
+        self.screen.blit(btn_text, (self.restart_btn.centerx - btn_text.get_width()//2, 
+                                      self.restart_btn.centery - btn_text.get_height()//2))
